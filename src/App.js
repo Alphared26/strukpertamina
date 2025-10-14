@@ -5,9 +5,11 @@ import { getFirestore, doc, setDoc, collection, query, onSnapshot, updateDoc, de
 // Pustaka html2canvas dan jspdf akan dimuat secara dinamis dan diakses dari objek window.
 
 // --- Global Constants (Provided by environment) ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+// --- Global Constants (For Vercel Deployment) ---
+// --- Global Constants (For Vercel Deployment) ---
+const firebaseConfig = JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG);
+const initialAuthToken = null; // Tidak digunakan di Vercel
+const appId = firebaseConfig.appId || 'default-app-id'; // Ambil dari config
 
 // --- Daftar Harga Produk BBM (per Oktober 2025) ---
 const productPrices = {
@@ -272,17 +274,14 @@ export default function App() {
             setDb(dbInstance);
             setAuth(authInstance);
             const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
-                if (user) {
-                    setUserId(user.uid);
-                } else if (initialAuthToken) {
-                    await signInWithCustomToken(authInstance, initialAuthToken);
-                } else {
-                    await signInAnonymously(authInstance);
-                }
-                setUserId(authInstance.currentUser?.uid || 'anonymous');
-                setIsAuthReady(true);
-                setIsLoading(false);
-            });
+    if (!user) {
+        // Jika tidak ada user, langsung sign in secara anonim
+        await signInAnonymously(authInstance);
+    }
+    setUserId(authInstance.currentUser?.uid || 'anonymous');
+    setIsAuthReady(true);
+    setIsLoading(false);
+});
             return () => unsubscribe();
         } catch (error) {
             console.error("Firebase initialization failed:", error);
